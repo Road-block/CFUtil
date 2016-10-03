@@ -53,6 +53,7 @@ ADDON.setupHooks = function()
     ADDON.FCF_SetWindowName = function(frame, name, doNotSave)
       if string.lower(name) == "debug" then
         ChatFrame_RemoveAllMessageGroups(frame)
+        frame:SetMaxLines(1024)
         ADDON.debugFrame = frame
       end
       ADDON.hooks.FCF_SetWindowName(frame, name, doNotSave)
@@ -68,6 +69,7 @@ debugframe = function()
     if tab ~= nil and (string.lower(tabName) == "debug") then
       ADDON.debugFrame = getglobal("ChatFrame"..i)
       ChatFrame_RemoveAllMessageGroups(ADDON.debugFrame)
+      ADDON.debugFrame:SetMaxLines(1024)
       return ADDON.debugFrame
     end
   end
@@ -78,6 +80,8 @@ help = function()
   Print("Options")
   Print("/cfutil filter")
   Print("  toggles hiding system messages from main frame")
+  Print("/cfutil clear")
+  Print("  clears the debug frame")
 end
 SlashCmdList["CFUTIL"] = function(msg)
   if msg == nil or msg == "" then
@@ -92,6 +96,10 @@ SlashCmdList["CFUTIL"] = function(msg)
       CFUtilDB.filter = not CFUtilDB.filter
       local status = CFUtilDB.filter and "|cff00ff00ON|r" or "|cffff0000OFF"
       Print("Filtering system messsages from main frame: "..status)
+    elseif string.lower(msg) == "clear" then
+      if ADDON.debugFrame ~= nil then
+        ADDON.debugFrame:Clear()
+      end
     else
       help()
     end
