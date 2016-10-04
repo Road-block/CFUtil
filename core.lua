@@ -1,8 +1,9 @@
 local ADDON, NAME = {}, "CFUtil"
 ADDON.hooks = {}
+ADDON.msgBfr = {}
 local _G = getfenv(0)
 local f = CreateFrame("Frame")
-local help,debugframe
+local help,debugframe,copyframe,tabClickHook
 f.OnEvent = function(event,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
   return f[event]~=nil and f[event](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
 end
@@ -24,6 +25,7 @@ end
 ADDON.setupHooks = function()
   do
     ADDON.systemId = GetChatTypeIndex("SYSTEM") or 11
+    ADDON.copyFrame = copyframe()
     --[[ADDON.hooks.SendChatMessage = SendChatMessage
     ADDON.SendChatMessage = function(msg,chatType,lang,chan)
       CFUtilDB.chathistory = (CFUtilDB.chathistory~=nil) and CFUtilDB.chathistory or {}
@@ -44,6 +46,7 @@ ADDON.setupHooks = function()
           ChatFrame_RemoveAllMessageGroups(frame) 
           frame:AddMessage(msg,r,g,b,id) 
         end
+        table.insert(ADDON.msgBfr,msg)
       else
         ADDON.hooks.AddMessage(DEFAULT_CHAT_FRAME,msg,r,g,b,id)
       end
@@ -52,6 +55,8 @@ ADDON.setupHooks = function()
     ADDON.hooks.FCF_SetWindowName = FCF_SetWindowName
     ADDON.FCF_SetWindowName = function(frame, name, doNotSave)
       if string.lower(name) == "debug" then
+        local tab = getglobal(frame:GetName().."Tab")
+        tabClickHook(tab)
         ChatFrame_RemoveAllMessageGroups(frame)
         frame:SetMaxLines(1024)
         ADDON.debugFrame = frame
@@ -61,27 +66,83 @@ ADDON.setupHooks = function()
     FCF_SetWindowName = ADDON.FCF_SetWindowName
   end
 end
+tabClickHook = function(tab)
+  local clickFunc = tab:GetScript("OnClick")
+  if tab.hasCustom == nil and type(clickFunc) == "function" then
+    tab.hasCustom = true
+    tab:SetScript("OnClick",function() 
+        if IsShiftKeyDown() then 
+          ADDON.copyFrame.AddSelectText(table.concat(ADDON.msgBfr,"\n"))
+          if ADDON.debugFrame:IsVisible() then
+            ADDON.copyFrame:ClearAllPoints()
+            ADDON.copyFrame:SetAllPoints(ADDON.debugFrame)
+          end
+          ADDON.copyFrame:Show()
+        end 
+        clickFunc(this,arg1,arg2)
+      end)
+  end
+end
 debugframe = function()
   if ADDON.debugFrame ~= nil then return ADDON.debugFrame end
   for i=1,NUM_CHAT_WINDOWS do
     local tab = getglobal("ChatFrame"..i.."Tab")
+    local cf = getglobal("ChatFrame"..i)
     local tabName = tab:GetText()
     if tab ~= nil and (string.lower(tabName) == "debug") then
-      ADDON.debugFrame = getglobal("ChatFrame"..i)
+      tabClickHook(tab)
+      ADDON.debugFrame = cf
       ChatFrame_RemoveAllMessageGroups(ADDON.debugFrame)
       ADDON.debugFrame:SetMaxLines(1024)
       return ADDON.debugFrame
     end
   end
 end
+copyframe = function()
+  local cf = CreateFrame("Frame", NAME.."ChatCopyFrame", UIParent)
+  cf:SetWidth(500)
+  cf:SetHeight(400)
+  cf:SetPoint('CENTER', UIParent, 'CENTER', 0,0)
+  cf:SetFrameStrata('DIALOG')
+  cf:Hide()
+  cf:SetBackdrop({
+    bgFile = [[Interface\Buttons\WHITE8x8]],
+    insets = {left = 3, right = 3, top = 4, bottom = 3
+  }})
+  cf:SetBackdropColor(0, 0, 0, 0.7)
+  local cfb = CreateFrame("EditBox", NAME.."ChatCopyFrameEdit", cf)
+  cfb:SetMultiLine(true)
+  cfb:SetAutoFocus(true)
+  cfb:EnableMouse(true)
+  cfb:SetMaxLetters(99999)
+  cfb:SetHistoryLines(1)
+  cfb:SetFont('Fonts\\ARIALN.ttf', 12, 'THINOUTLINE')
+  cfb:SetWidth(590)
+  cfb:SetHeight(590)
+  cfb:SetScript("OnEscapePressed", function() 
+      cfb:SetText("")
+      cf:Hide() 
+    end)
+  cf.editBox = cfb
+  cf.AddSelectText = function(txt)
+    cf.editBox:SetText(txt)
+    cf.editBox:HighlightText(--[[0,cf.editBox:GetNumLetters()]])
+  end
+  local scrl = CreateFrame("ScrollFrame", NAME.."ChatCopyFrameScroll", cf, 'UIPanelScrollFrameTemplate')
+  scrl:SetPoint('TOPLEFT', cf, 'TOPLEFT', 8, -30)
+  scrl:SetPoint('BOTTOMRIGHT', cf, 'BOTTOMRIGHT', -30, 8)
+  scrl:SetScrollChild(cfb)
+  return cf
+end
 help = function()
-  Print("Create a new chatwindow and name it Debug (case insensitive) to show system messages")
+  Print("Create a new chatwindow and name it \"Debug\" (case insensitive) to show system messages")
+  Print("  Shift-Click the chatframe Tab to open a copy frame. Esc to close it.")
   Print("  ")
-  Print("Options")
+  Print("Cmd-line Options")
   Print("/cfutil filter")
   Print("  toggles hiding system messages from main frame")
   Print("/cfutil clear")
-  Print("  clears the debug frame")
+  Print("  clears the debug frame and the copy frame history")
 end
 SlashCmdList["CFUTIL"] = function(msg)
   if msg == nil or msg == "" then
@@ -99,6 +160,7 @@ SlashCmdList["CFUTIL"] = function(msg)
     elseif string.lower(msg) == "clear" then
       if ADDON.debugFrame ~= nil then
         ADDON.debugFrame:Clear()
+        ADDON.msgBfr = {}
       end
     else
       help()
