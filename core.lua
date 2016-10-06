@@ -160,8 +160,8 @@ SlashCmdList["CFUTIL"] = function(msg)
     elseif string.lower(msg) == "clear" then
       if ADDON.debugFrame ~= nil then
         ADDON.debugFrame:Clear()
-        ADDON.msgBfr = {}
       end
+      ADDON.msgBfr = {}
     else
       help()
     end
