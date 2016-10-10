@@ -3,12 +3,25 @@ ADDON.hooks = {}
 ADDON.msgBfr = {}
 local _G = getfenv(0)
 local f = CreateFrame("Frame")
-local help,debugframe,copyframe,tabClickHook
+local help,debugframe,copyframe,tabClickHook,flash
 f.OnEvent = function(event,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
   return f[event]~=nil and f[event](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
 end
 f:SetScript("OnEvent", function() f.OnEvent(event,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20) end)
 f:RegisterEvent("VARIABLES_LOADED")
+f:RegisterEvent("PLAYER_LOGIN")
+f.PLAYER_LOGIN = function()
+  local frame = debugframe()
+  if frame ~= nil then
+    local name, fontSize, r, g, b, a, shown, locked = GetChatWindowInfo(frame:GetID())
+    if (not shown and not frame.isDocked) then
+      FCF_OpenNewWindow(name)
+    end
+  else
+    FCF_OpenNewWindow("Debug")
+    frame = debugframe()
+  end
+end
 f.VARIABLES_LOADED = function()
   CFUtilDB = (CFUtilDB~=nil) and CFUtilDB or {filter=true}
   ADDON.setupHooks()
@@ -42,9 +55,13 @@ ADDON.setupHooks = function()
           ADDON.hooks.AddMessage(DEFAULT_CHAT_FRAME,msg,r,g,b,id)
         end
         local frame = debugframe()
-        if frame~=nil then 
-          ChatFrame_RemoveAllMessageGroups(frame) 
-          frame:AddMessage(msg,r,g,b,id) 
+        if frame~=nil then
+          local name, fontSize, r, g, b, a, shown, locked = GetChatWindowInfo(frame:GetID())
+          if (shown or frame.isDocked) then
+            ChatFrame_RemoveAllMessageGroups(frame) 
+            frame:AddMessage(msg,r,g,b,id)
+            flash(frame)
+          end
         end
         table.insert(ADDON.msgBfr,msg)
       else
@@ -65,6 +82,14 @@ ADDON.setupHooks = function()
     end
     FCF_SetWindowName = ADDON.FCF_SetWindowName
   end
+end
+flash = function(frame)
+  local tabFlash = getglobal(frame:GetName().."TabFlash");
+  if ( not frame.isDocked or (frame == SELECTED_DOCK_FRAME) or UIFrameIsFlashing(tabFlash) ) then
+    return
+  end
+  tabFlash:Show();
+  UIFrameFlash(tabFlash, 0.25, 0.25, 60, nil, 0.5, 0.5);
 end
 tabClickHook = function(tab)
   local clickFunc = tab:GetScript("OnClick")
@@ -142,7 +167,9 @@ help = function()
   Print("/cfutil filter")
   Print("  toggles hiding system messages from main frame")
   Print("/cfutil clear")
-  Print("  clears the debug frame and the copy frame history")
+  Print("  clears the debug frame and the copy frame buffer")
+  Print("/cls")
+  Print("  clears all chat windows and the copy frame buffer")
 end
 SlashCmdList["CFUTIL"] = function(msg)
   if msg == nil or msg == "" then
@@ -167,5 +194,12 @@ SlashCmdList["CFUTIL"] = function(msg)
     end
   end
 end
+SlashCmdList["CLS"] = function()
+  for i=1,NUM_CHAT_WINDOWS do
+    getglobal("ChatFrame"..i):Clear()
+  end
+  ADDON.msgBfr = {}
+end
 SLASH_CFUTIL1 = "/cfutil"
+SLASH_CLS1 = "/cls"
 _G[NAME] = ADDON
