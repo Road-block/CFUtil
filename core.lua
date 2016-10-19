@@ -4,13 +4,13 @@ ADDON.msgBfr = {}
 local _G = getfenv(0)
 local f = CreateFrame("Frame")
 local help,debugframe,copyframe,tabClickHook,flash
-f.OnEvent = function(event,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
-  return f[event]~=nil and f[event](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
+f.OnEvent = function(event,...)
+  return f[event]~=nil and f[event](unpack(arg))
 end
-f:SetScript("OnEvent", function() f.OnEvent(event,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20) end)
+f:SetScript("OnEvent", function(...) f.OnEvent(event,unpack(arg)) end)
 f:RegisterEvent("VARIABLES_LOADED")
 f:RegisterEvent("PLAYER_LOGIN")
-f.PLAYER_LOGIN = function()
+f.PLAYER_LOGIN = function(...)
   local frame = debugframe()
   if frame ~= nil then
     local name, fontSize, r, g, b, a, shown, locked = GetChatWindowInfo(frame:GetID())
@@ -22,8 +22,9 @@ f.PLAYER_LOGIN = function()
     frame = debugframe()
   end
 end
-f.VARIABLES_LOADED = function()
+f.VARIABLES_LOADED = function(...)
   CFUtilDB = (CFUtilDB~=nil) and CFUtilDB or {filter=true}
+  CFUtilDB.debug = {}
   ADDON.setupHooks()
   if _G.Print==nil then 
     _G.Print = function(msg) 
@@ -194,12 +195,20 @@ SlashCmdList["CFUTIL"] = function(msg)
     end
   end
 end
-SlashCmdList["CLS"] = function()
-  for i=1,NUM_CHAT_WINDOWS do
-    getglobal("ChatFrame"..i):Clear()
+if type(SlashCmdList["PRINT"])=="nil" then
+  SlashCmdList["PRINT"] = function(o)
+    RunScript("local function func(...) for k = 1,table.getn(arg) do arg[k] = \"|cff9664c8CFUtil:|r \"..tostring(getglobal(arg[k]) or arg[k]) end CFUtil.debugFrame:AddMessage(table.concat(arg, ' ')) end func(" .. o .. ")")
   end
-  ADDON.msgBfr = {}
+  SLASH_PRINTO1 = "/print"
+end
+if type(SlashCmdList["CLS"])=="nil" then
+  SlashCmdList["CLS"] = function()
+    for i=1,NUM_CHAT_WINDOWS do
+      getglobal("ChatFrame"..i):Clear()
+    end
+    ADDON.msgBfr = {}
+  end  
+  SLASH_CLS1 = "/cls"
 end
 SLASH_CFUTIL1 = "/cfutil"
-SLASH_CLS1 = "/cls"
 _G[NAME] = ADDON
