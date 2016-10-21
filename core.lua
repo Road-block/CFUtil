@@ -199,7 +199,7 @@ if type(SlashCmdList["PRINT"])=="nil" then
   SlashCmdList["PRINT"] = function(o)
     RunScript("local function func(...) for k = 1,table.getn(arg) do arg[k] = \"|cff9664c8CFUtil:|r \"..tostring(getglobal(arg[k]) or arg[k]) end CFUtil.debugFrame:AddMessage(table.concat(arg, ' ')) end func(" .. o .. ")")
   end
-  SLASH_PRINTO1 = "/print"
+  SLASH_PRINT1 = "/print"
 end
 if type(SlashCmdList["CLS"])=="nil" then
   SlashCmdList["CLS"] = function()
