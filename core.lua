@@ -27,12 +27,25 @@ f.VARIABLES_LOADED = function(...)
   CFUtilDB.debug = {}
   ADDON.setupHooks()
   if _G.Print==nil then 
-    _G.Print = function(msg) 
-      if not DEFAULT_CHAT_FRAME:IsVisible() then
-        FCF_SelectDockFrame(DEFAULT_CHAT_FRAME)
+    _G.Print = function(...)
+      local printf = function(f)
+        if not DEFAULT_CHAT_FRAME:IsVisible() then
+          FCF_SelectDockFrame(DEFAULT_CHAT_FRAME)
+        end
+        local out = "|cff9664c8CFUtil:|r "..f
+        DEFAULT_CHAT_FRAME:AddMessage(out)
+      end 
+      for i,a in ipairs(arg) do
+        if type(a)=="table" then
+          for k,v in pairs(a) do
+            printf(k..":"..tostring(v))
+          end
+        elseif type(a)=="function" then
+          printf(tostring(a()))
+        else
+          printf(tostring(a))
+        end
       end
-      local out = "|cff9664c8CFUtil:|r "..tostring(msg)
-      DEFAULT_CHAT_FRAME:AddMessage(out)
     end 
   end
 end
@@ -161,7 +174,7 @@ copyframe = function()
   return cf
 end
 help = function()
-  Print("Create a new chatwindow and name it \"Debug\" (case insensitive) to show system messages")
+  Print("Create a new chatwindow and name it \"Debug\" (case insensitive) if it wasn't automatically created")
   Print("  Shift-Click the chatframe Tab to open a copy frame. Esc to close it.")
   Print("  ")
   Print("Cmd-line Options")
@@ -171,6 +184,8 @@ help = function()
   Print("  clears the debug frame and the copy frame buffer")
   Print("/cls")
   Print("  clears all chat windows and the copy frame buffer")
+  Print("/print <any>")
+  Print("  prints any arguments following to default chat")
 end
 SlashCmdList["CFUTIL"] = function(msg)
   if msg == nil or msg == "" then
@@ -196,8 +211,8 @@ SlashCmdList["CFUTIL"] = function(msg)
   end
 end
 if type(SlashCmdList["PRINT"])=="nil" then
-  SlashCmdList["PRINT"] = function(o)
-    RunScript("local function func(...) for k = 1,table.getn(arg) do arg[k] = \"|cff9664c8CFUtil:|r \"..tostring(getglobal(arg[k]) or arg[k]) end CFUtil.debugFrame:AddMessage(table.concat(arg, ' ')) end func(" .. o .. ")")
+  SlashCmdList["PRINT"] = function(text)
+    RunScript("local func=function(...) Print(unpack(arg)) end func("..text..")")
   end
   SLASH_PRINT1 = "/print"
 end
